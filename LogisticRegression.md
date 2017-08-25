@@ -163,14 +163,12 @@ summary(train.log)
     ## 
     ## Number of Fisher Scoring iterations: 10
 
-``` r
-# From the summary it is inferred that some of the variables like at_buy_boolean, at_freq_last24_sv, last_sv, multiple_sv are the most effective parameters on buying the product. 
-```
+From the summary it is inferred that some of the variables like at_buy_boolean, at_freq_last24_sv, last_sv, multiple_sv are the most effective parameters on buying the product. 
 
-4 Compute the confusion matrix on the test data for the complete model.
+
+#### 4 Compute the confusion matrix on the test data for the complete model.
 
 ``` r
-# Put your R code here.
 train.pclass <- ifelse(predict(train.log, type = "response") < 0.5, 0, 1)
 table(train.pclass,train$y_buy)
 ```
@@ -180,19 +178,8 @@ table(train.pclass,train$y_buy)
     ##            0 35314   163
     ##            1     1     1
 
-5 Perform variable selection on on the training data set and determine the best reduced model. Summarize the model and discuss.
+#### 5 Perform variable selection on on the training data set and determine the best reduced model. Summarize the model and discuss.
 
-``` r
-# Put your R code here. 
-
-library(glmnet)
-```
-
-    ## Loading required package: Matrix
-
-    ## Loading required package: foreach
-
-    ## Loaded glmnet 2.0-10
 
 ``` r
 train.model <- model.matrix(y_buy ~ ., train)[, -1]
@@ -275,14 +262,12 @@ mse0
 
     ## [1] 0.004452471
 
-``` r
-#Actually the error for test data is more important but here I just wanted to show that by using lasso which is forcing some of the coefficientsthe to be zero we can still get good answer.
-```
+Actually the error for test data is more important but here I just wanted to show that by using lasso which is forcing some of the coefficientsthe to be zero we can still get good answer.
 
-6 Compute the confusion matrix on the test data for the reduced model.
+
+#### 6 Compute the confusion matrix on the test data for the reduced model.
 
 ``` r
-# Put your R code here.
 train.y_buy <- ifelse(train.cv.pr < 0.5, 0, 1)
 table(train.y_buy , train$y_buy ) # the output of the prediction is only zero
 ```
@@ -291,36 +276,9 @@ table(train.y_buy , train$y_buy ) # the output of the prediction is only zero
     ## train.y_buy     0     1
     ##           0 35315   164
 
-7 Plot the ROC curve and compute the AUC on the reduced model for the test data.
+#### 7 Plot the ROC curve and compute the AUC on the reduced model for the test data.
 
 ``` r
-library(ROCR)
-```
-
-    ## Loading required package: gplots
-
-    ## 
-    ## Attaching package: 'gplots'
-
-    ## The following object is masked from 'package:stats':
-    ## 
-    ##     lowess
-
-``` r
-# Put your R code here.
-
-# Finding for train data
-# train.model <- model.matrix(y_buy ~ ., train)[, -1]
-# train.cv.pr  <- predict(train.cv, newx = train.model, s = "lambda.min")
-# train.rocrpred <- prediction(train.cv.pr, train$y_buy)
-# perf <- performance(train.rocrpred, "tpr", "fpr")
-# plot(perf, main="ROC curve",colorize=T)
-# abline(0, 1)
-# auc.train <- performance(train.rocrpred,"auc")
-# auc.train <- unlist(slot(auc.train, "y.values"))
-# auc.train
-
-# Finding for test data
 test.model <- model.matrix(y_buy ~ ., test)[, -1]
 test.cv.pr  <- predict(train.cv, newx = test.model, s = "lambda.min")
 test.rocrpred <- prediction(test.cv.pr, test$y_buy)
@@ -339,11 +297,9 @@ auc.test
 
     ## [1] 0.8764721
 
-8 Plot the cumulative lift curve on the reduced model for the test data.
+#### 8 Plot the cumulative lift curve on the reduced model for the test data.
 
 ``` r
-# Put your R code here.
-
 #train
 # perf <- performance(train.rocrpred,"lift","rpp")
 # plot(perf, main="Lift curve", colorize=T)
