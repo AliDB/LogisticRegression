@@ -1,0 +1,185 @@
+---
+output:
+  rmarkdown: github_document
+  html_document: default
+  pdf_document: default
+---
+
+Assignment 3:  Logistic Regression
+
+This data is from M6D.
+
+Predicted attribute: y_buy 
+
+Attribute Information:  
+at_buy_boolean  
+at_freq_buy        
+at_freq_last24_buy  
+at_freq_last24_sv   
+at_freq_last24_sv_int_buy  
+at_freq_sv         
+at_freq_sv_int_buy  
+at_interval_buy        
+at_interval_sv  
+at_interval_sv_int_buy   
+expected_time_buy  
+expected_time_sv  
+expected_time_sv_int_buy  
+last_buy              
+last_sv  
+last_sv_int_buy     
+multiple_buy  
+multiple_sv       
+multiple_sv_int_buy  
+uniq_content_links  
+num_checkins  
+
+1 Randomly split the data such that approximately 65% of the observations are in the `train` data set and the remaining observations are in the `test` data set.
+```{r}
+#Before this I need to setwd() to the current folder otherwise it will not work
+set <- read.table("dds_ch5_binary_class_dataset.txt", header = TRUE, sep = "\t")
+dim(set)
+head(set)
+
+rate = .65;
+tr.sample<- sample(1:nrow(set),.65*nrow(set),replace=F);
+train <- set[tr.sample,]
+length(train[,1])/ length(set[,1])
+head(train)
+
+te.sample <- setdiff(1:nrow(set), tr.sample)
+test <- set[te.sample,]
+length(test[,1]) / length(set[,1])
+head(test)
+
+
+```
+
+2 Compute the mean and standard deviation for each of the predictors conditioned by the response `y_buy` for the training data and put the results in a $21 \times 4$ table. The columns headings should be means and standard deviation for each of whether the user buys (1) or not (0). Also, compute the sample sizes for buy (1) or not (0). Discuss the important differences. Compute the overall mean and standard deviation for `y_buy`.
+```{r}
+# Put your R code here.
+train.1 <- train[which(train$y_buy==1),]
+train.0 <- train[which(train$y_buy==0),]
+
+train.1$y_buy <- NULL
+train.0$y_buy <- NULL
+
+
+mean1 <- lapply(train.1,mean)
+mean0 <- lapply(train.0,mean)
+
+sd1 <- lapply(train.1,sd)
+sd0 <- lapply(train.0,sd)
+
+#length(mean1);length(mean0);length(sd1);length(sd0)
+
+
+mean1m <- as.matrix(mean1, 21,1)
+mean0m <- as.matrix(mean0, 21,1)
+sd1m <- as.matrix(sd1, 21,1)
+sd0m <- as.matrix(sd0, 21,1)
+
+
+table <- cbind(mean1m,sd1m,mean0m,sd0m)
+colnames(table) <- c("meanForBuy1","SdForBuy1", "meanForBuy0","SdForBuy0"); table
+
+#By looking at the table we can see that most of the mean values  for the cases that lead to buy are greater than the cases that are not leaded to buy
+
+
+samplesizey1 <- length(which(set$y_buy==1)) ; samplesizey1
+samplesizey0 <- length(which(set$y_buy==0)) ; samplesizey0
+
+mean(set$y_buy)
+sd(set$y_buy)
+
+
+
+```
+
+3 Fit and summarize the logistic regression model on the training data using all the predictors. Discuss.
+```{r}
+# Put your R code here.
+train.log <- glm(train$y_buy ~ . ,data=train,  family = binomial(logit))
+head(train)
+summary(train.log)
+
+# From the summary it is inferred that some of the variables like at_buy_boolean, at_freq_last24_sv, last_sv, multiple_sv are the most effective parameters on buying the product. 
+```
+
+4 Compute the confusion matrix on the test data for the complete model.
+```{r}
+# Put your R code here.
+train.pclass <- ifelse(predict(train.log, type = "response") < 0.5, 0, 1)
+table(train.pclass,train$y_buy)
+```
+
+5 Perform variable selection on on the training data set and determine the best reduced model. Summarize the model and discuss. 
+```{r}
+# Put your R code here. 
+
+library(glmnet)
+train.model <- model.matrix(y_buy ~ ., train)[, -1]
+train.lasso <- glmnet(train.model, train$y_buy, alpha=1, nlambda=20)
+print(train.lasso)
+plot(train.lasso, xvar="lambda", label=TRUE)
+train.cv <- cv.glmnet(train.model, train$y_buy, type.measure="mae", nfolds=10, alpha=1) 
+coef(train.cv, s="lambda.min")
+train.cv$lambda.min
+train.cv.pr  <- predict(train.cv, newx = train.model, s = "lambda.min")
+mse0 <- mean((train$y_buy - train.cv.pr)^2)
+mse0
+#Actually the error for test data is more important but here I just wanted to show that by using lasso which is forcing some of the coefficientsthe to be zero we can still get good answer.
+```
+
+6 Compute the confusion matrix on the test data for the reduced model.
+```{r}
+# Put your R code here.
+train.y_buy <- ifelse(train.cv.pr < 0.5, 0, 1)
+table(train.y_buy , train$y_buy ) # the output of the prediction is only zero
+```
+
+7 Plot the ROC curve and compute the AUC on the reduced model for the test data.
+```{r}
+library(ROCR)
+# Put your R code here.
+
+# Finding for train data
+# train.model <- model.matrix(y_buy ~ ., train)[, -1]
+# train.cv.pr  <- predict(train.cv, newx = train.model, s = "lambda.min")
+# train.rocrpred <- prediction(train.cv.pr, train$y_buy)
+# perf <- performance(train.rocrpred, "tpr", "fpr")
+# plot(perf, main="ROC curve",colorize=T)
+# abline(0, 1)
+# auc.train <- performance(train.rocrpred,"auc")
+# auc.train <- unlist(slot(auc.train, "y.values"))
+# auc.train
+
+# Finding for test data
+test.model <- model.matrix(y_buy ~ ., test)[, -1]
+test.cv.pr  <- predict(train.cv, newx = test.model, s = "lambda.min")
+test.rocrpred <- prediction(test.cv.pr, test$y_buy)
+perf <- performance(test.rocrpred, "tpr", "fpr")
+plot(perf, main="ROC curve",colorize=T)
+abline(0, 1)
+auc.test <- performance(test.rocrpred,"auc")
+auc.test <- unlist(slot(auc.test, "y.values"))
+auc.test
+
+```
+
+8 Plot the cumulative lift curve on the reduced model for the test data.
+```{r}
+# Put your R code here.
+
+#train
+# perf <- performance(train.rocrpred,"lift","rpp")
+# plot(perf, main="Lift curve", colorize=T)
+
+#test
+perf <- performance(test.rocrpred,"lift","rpp")
+plot(perf, main="Lift curve", colorize=T)
+
+```
+
+
+
